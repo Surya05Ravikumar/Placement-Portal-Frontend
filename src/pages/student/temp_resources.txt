@@ -1,0 +1,185 @@
+
+// Mock data - Replace with actual API call
+const mockResources = [
+  // Web Dev
+  {
+    id: 1,
+    stack: 'web-dev',
+    title: 'React.js Complete Guide',
+    type: 'pdf',
+    uploadedBy: 'Placement Cell',
+    uploadDate: '2026-01-20',
+    size: '2.4 MB',
+    url: '#'
+  },
+  {
+    id: 2,
+    stack: 'web-dev',
+    title: 'JavaScript Interview Questions',
+    type: 'pdf',
+    uploadedBy: 'Placement Cell',
+    uploadDate: '2026-01-18',
+    size: '1.8 MB',
+    url: '#'
+  },
+  {
+    id: 3,
+    stack: 'web-dev',
+    title: 'Node.js Tutorial Series',
+    type: 'video',
+    uploadedBy: 'Placement Cell',
+    uploadDate: '2026-01-15',
+    url: 'https://youtube.com/example'
+  },
+  {
+    id: 4,
+    stack: 'web-dev',
+    title: 'Full Stack Development Roadmap',
+    type: 'link',
+    uploadedBy: 'Placement Cell',
+    uploadDate: '2026-01-12',
+    url: 'https://roadmap.sh/full-stack'
+  },
+  {
+    id: 5,
+    stack: 'web-dev',
+    title: 'REST API Best Practices',
+    type: 'pdf',
+    uploadedBy: 'Placement Cell',
+    uploadDate: '2026-01-10',
+    size: '1.2 MB',
+    url: '#'
+  },
+  // Core
+  {
+    id: 6,
+    stack: 'core',
+    title: 'Data Structures & Algorithms',
+    type: 'pdf',
+    uploadedBy: 'Placement Cell',
+    uploadDate: '2026-01-22',
+    size: '3.5 MB',
+    url: '#'
+  },
+  {
+    id: 7,
+    stack: 'core',
+    title: 'Operating Systems Concepts',
+    type: 'pdf',
+    uploadedBy: 'Placement Cell',
+    uploadDate: '2026-01-19',
+    size: '2.8 MB',
+    url: '#'
+  },
+  {
+    id: 8,
+    stack: 'core',
+    title: 'DBMS Complete Notes',
+    type: 'pdf',
+    uploadedBy: 'Placement Cell',
+    uploadDate: '2026-01-16',
+    size: '2.1 MB',
+    url: '#'
+  },
+  {
+    id: 9,
+    stack: 'core',
+    title: 'Computer Networks Tutorial',
+    type: 'video',
+    uploadedBy: 'Placement Cell',
+    uploadDate: '2026-01-14',
+    url: 'https://youtube.com/example'
+  },
+  // Java
+  {
+    id: 10,
+    stack: 'java',
+    title: 'Core Java Programming',
+    type: 'pdf',
+    uploadedBy: 'Placement Cell',
+    uploadDate: '2026-01-21',
+    size: '3.2 MB',
+    url: '#'
+  },
+  {
+    id: 11,
+    stack: 'java',
+    title: 'Java Collections Framework',
+    type: 'pdf',
+    uploadedBy: 'Placement Cell',
+    uploadDate: '2026-01-17',
+    size: '1.5 MB',
+    url: '#'
+  },
+  {
+    id: 12,
+    stack: 'java',
+    title: 'Spring Boot Masterclass',
+    type: 'video',
+    uploadedBy: 'Placement Cell',
+    uploadDate: '2026-01-13',
+    url: 'https://youtube.com/example'
+  },
+  // Aptitude
+  {
+    id: 13,
+    stack: 'aptitude',
+    title: 'Quantitative Aptitude',
+    type: 'pdf',
+    uploadedBy: 'Placement Cell',
+    uploadDate: '2026-01-25',
+    size: '4.2 MB',
+    url: '#'
+  },
+  {
+    id: 14,
+    stack: 'aptitude',
+    title: 'Logical Reasoning',
+    type: 'pdf',
+    uploadedBy: 'Placement Cell',
+    uploadDate: '2026-01-23',
+    size: '2.9 MB',
+    url: '#'
+  },
+  {
+    id: 15,
+    stack: 'aptitude',
+    title: 'Verbal Ability',
+    type: 'pdf',
+    uploadedBy: 'Placement Cell',
+    uploadDate: '2026-01-20',
+    size: '1.7 MB',
+    url: '#'
+  },
+  // HR
+  {
+    id: 16,
+    stack: 'hr',
+    title: 'Common HR Interview Questions',
+    type: 'pdf',
+    uploadedBy: 'Placement Cell',
+    uploadDate: '2026-01-24',
+    size: '0.9 MB',
+    url: '#'
+  },
+  {
+    id: 17,
+    stack: 'hr',
+    title: 'Resume Writing Guide',
+    type: 'pdf',
+    uploadedBy: 'Placement Cell',
+    uploadDate: '2026-01-21',
+    size: '1.1 MB',
+    url: '#'
+  },
+  {
+    id: 18,
+    stack: 'hr',
+    title: 'Interview Preparation Tips',
+    type: 'video',
+    uploadedBy: 'Placement Cell',
+    uploadDate: '2026-01-18',
+    url: 'https://youtube.com/example'
+  }
+];
+
