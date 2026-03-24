@@ -29,6 +29,24 @@ const StudentManagement = () => {
   const [showEditModal, setShowEditModal] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showBulkModal, setShowBulkModal] = useState(false);
+  const [activeTab, setActiveTab] = useState('active'); // 'active' or 'requests'
+  const [pendingRequests, setPendingRequests] = useState([]);
+  const [loading, setLoading] = useState(false); // To handle refresh button state
+
+  const fetchRequests = async () => {
+    setLoading(true);
+    try {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/users/requests`);
+      if (response.ok) {
+        const data = await response.json();
+        setPendingRequests(data);
+      }
+    } catch (err) {
+      console.error('Error fetching requests:', err);
+    } finally {
+        setLoading(false);
+    }
+  };
 
   // Generic Delete State
   const [deleteModalConfig, setDeleteModalConfig] = useState({
@@ -54,8 +72,62 @@ const StudentManagement = () => {
 
   useEffect(() => {
     fetchStudents();
+    fetchRequests();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedBatch]);
+
+  const handleApprove = async (id) => {
+    try {
+      const userStr = localStorage.getItem('user');
+      const user = userStr ? JSON.parse(userStr) : null;
+      const userId = user ? (user._id || user.id || user.email) : 'admin-bypass';
+
+      const resp = await fetch(`${import.meta.env.VITE_API_URL}/api/users/${id}/status`, {
+        method: 'PATCH',
+        headers: { 
+          'Content-Type': 'application/json',
+          'x-user-id': userId
+        },
+        body: JSON.stringify({ status: 'active' })
+      });
+      if (resp.ok) {
+        success('Student approved successfully!');
+        fetchStudents();
+        fetchRequests();
+      } else {
+        const data = await resp.json();
+        errorToast(data.message || 'Failed to approve student');
+      }
+    } catch (err) {
+      errorToast('Failed to approve student');
+    }
+  };
+
+  const handleReject = async (id) => {
+    try {
+      const userStr = localStorage.getItem('user');
+      const user = userStr ? JSON.parse(userStr) : null;
+      const userId = user ? (user._id || user.id || user.email) : 'admin-bypass';
+
+      const resp = await fetch(`${import.meta.env.VITE_API_URL}/api/users/${id}/status`, {
+        method: 'PATCH',
+        headers: { 
+          'Content-Type': 'application/json',
+          'x-user-id': userId
+        },
+        body: JSON.stringify({ status: 'rejected' })
+      });
+      if (resp.ok) {
+        success('Registration request rejected');
+        fetchRequests();
+      } else {
+        const data = await resp.json();
+        errorToast(data.message || 'Failed to reject request');
+      }
+    } catch (err) {
+      errorToast('Failed to reject student');
+    }
+  };
 
   const getPlacementStatusBadge = (status) => {
     const configs = {
@@ -170,7 +242,36 @@ const StudentManagement = () => {
           />
         </div>
 
-        {/* Search and Filters */}
+        {/* Tab Switcher */}
+        <div className="flex items-center gap-1 mb-6 p-1 bg-gray-100/50 dark:bg-slate-900/50 rounded-2xl w-fit border border-gray-200 dark:border-slate-800">
+          <button
+            onClick={() => setActiveTab('active')}
+            className={`px-6 py-2.5 rounded-xl text-sm font-bold uppercase tracking-tight transition-all duration-300 ${activeTab === 'active'
+              ? 'bg-white dark:bg-blue-600 text-blue-600 dark:text-white shadow-lg'
+              : 'text-gray-500 hover:text-gray-700 dark:text-slate-400 dark:hover:text-slate-200'
+              }`}
+          >
+            Active Students
+          </button>
+          <button
+            onClick={() => setActiveTab('requests')}
+            className={`px-6 py-2.5 rounded-xl text-sm font-bold uppercase tracking-tight transition-all duration-300 flex items-center gap-2 ${activeTab === 'requests'
+              ? 'bg-white dark:bg-blue-600 text-blue-600 dark:text-white shadow-lg'
+              : 'text-gray-500 hover:text-gray-700 dark:text-slate-400 dark:hover:text-slate-200'
+              }`}
+          >
+            Registration Requests
+            {pendingRequests.length > 0 && (
+              <span className="bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-full animate-bounce">
+                {pendingRequests.length}
+              </span>
+            )}
+          </button>
+        </div>
+
+        {activeTab === 'active' ? (
+          <React.Fragment>
+            {/* Search and Filters */}
         <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm dark:shadow-[0_4px_20px_rgba(0,0,0,0.4)] border border-gray-200 dark:border-slate-700 p-6 mb-6">
           <div className="flex flex-col lg:flex-row gap-4">
             {/* Search Bar */}
@@ -477,13 +578,27 @@ const StudentManagement = () => {
                                 isOpen: true,
                                 itemName: student.name,
                                 warningText: 'This will remove the student\'s record permanently.',
-                                onConfirm: async () => {
+                                 onConfirm: async () => {
                                   try {
-                                    await fetch(`${import.meta.env.VITE_API_URL}/api/users/${student._id}`, { method: 'DELETE' });
-                                    fetchStudents();
+                                    const userStr = localStorage.getItem('user');
+                                    const user = userStr ? JSON.parse(userStr) : null;
+                                    const userId = user ? (user._id || user.id || user.email) : 'admin-bypass';
+
+                                    const resp = await fetch(`${import.meta.env.VITE_API_URL}/api/users/${student._id}`, { 
+                                      method: 'DELETE',
+                                      headers: { 'x-user-id': userId }
+                                    });
+                                    if (resp.ok) {
+                                      success('Student deleted successfully');
+                                      fetchStudents();
+                                    } else {
+                                      const data = await resp.json();
+                                      errorToast(data.message || 'Failed to delete student');
+                                    }
                                     setDeleteModalConfig(prev => ({ ...prev, isOpen: false }));
                                   } catch (err) {
                                     console.error('Error deleting student:', err);
+                                    errorToast('A network error occurred');
                                   }
                                 }
                               });
@@ -507,32 +622,94 @@ const StudentManagement = () => {
               </tbody>
             </table>
           </div>
+        </div>
 
-          {/* Pagination */}
-          <div className="px-6 py-4 border-t border-gray-200 flex items-center justify-between">
-            <p className="text-sm text-gray-600">
-              Showing <span className="font-semibold">{filteredStudents.length}</span> of{' '}
-              <span className="font-semibold">{students.length}</span> students
-            </p>
-            <div className="flex gap-2">
-              <button className="px-4 py-2 border border-gray-300 hover:bg-gray-50 rounded-lg text-sm font-medium transition-colors">
-                Previous
-              </button>
-              <button className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium">
-                1
-              </button>
-              <button className="px-4 py-2 border border-gray-300 hover:bg-gray-50 rounded-lg text-sm font-medium transition-colors">
-                2
-              </button>
-              <button className="px-4 py-2 border border-gray-300 hover:bg-gray-50 rounded-lg text-sm font-medium transition-colors">
-                3
-              </button>
-              <button className="px-4 py-2 border border-gray-300 hover:bg-gray-50 rounded-lg text-sm font-medium transition-colors">
-                Next
+          </React.Fragment>
+        ) : (
+          <div className="bg-white dark:bg-[#020617] rounded-xl shadow-sm dark:shadow-[0_6px_20px_rgba(0,0,0,0.4)] border border-gray-200 dark:border-slate-800 overflow-hidden">
+            <div className="p-6 border-b border-gray-200 dark:border-slate-800 flex justify-between items-center">
+              <div>
+                <h3 className="text-xl font-bold text-gray-900 dark:text-white uppercase tracking-tight">Pending Registration Requests</h3>
+                <p className="text-sm text-gray-500 dark:text-slate-400 mt-1">Review and approve student access requests</p>
+              </div>
+              <button
+                onClick={fetchRequests}
+                className="p-2 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-xl transition-all"
+                title="Refresh Requests"
+              >
+                <RefreshCw className={`w-5 h-5 text-gray-400 ${loading ? 'animate-spin' : ''}`} />
               </button>
             </div>
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-gray-50 dark:bg-[#020617] border-b border-gray-200 dark:border-slate-800">
+                  <tr>
+                    <th className="px-6 py-4 text-left text-xs font-black text-gray-500 dark:text-[#94A3B8] uppercase tracking-[0.2em]">S.No</th>
+                    <th className="px-6 py-4 text-left text-xs font-black text-gray-500 dark:text-[#94A3B8] uppercase tracking-[0.2em]">Student Info</th>
+                    <th className="px-6 py-4 text-left text-xs font-black text-gray-500 dark:text-[#94A3B8] uppercase tracking-[0.2em]">Reg No</th>
+                    <th className="px-6 py-4 text-left text-xs font-black text-gray-500 dark:text-[#94A3B8] uppercase tracking-[0.2em]">Dept / Batch</th>
+                    <th className="px-6 py-4 text-left text-xs font-black text-gray-500 dark:text-[#94A3B8] uppercase tracking-[0.2em]">CGPA</th>
+                    <th className="px-6 py-4 text-left text-xs font-black text-gray-500 dark:text-[#94A3B8] uppercase tracking-[0.2em]">Stream</th>
+                    <th className="px-6 py-4 text-left text-xs font-black text-gray-500 dark:text-[#94A3B8] uppercase tracking-[0.2em]">DOB / Gender</th>
+                    <th className="px-6 py-4 text-right text-xs font-black text-gray-500 dark:text-[#94A3B8] uppercase tracking-[0.2em]">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200 dark:divide-slate-800">
+                  {pendingRequests.length > 0 ? (
+                    pendingRequests.map((req, index) => (
+                      <tr key={req._id} className="hover:bg-gray-50 dark:hover:bg-[#0F172A] transition-all">
+                        <td className="px-6 py-5 text-sm text-gray-500 dark:text-[#CBD5F5] font-medium">{index + 1}</td>
+                        <td className="px-6 py-5">
+                          <div>
+                            <p className="font-bold text-gray-900 dark:text-[#F1F5F9]">{req.name}</p>
+                            <p className="text-xs text-gray-500 dark:text-slate-400">{req.email}</p>
+                          </div>
+                        </td>
+                        <td className="px-6 py-5 text-sm font-bold text-blue-600 dark:text-blue-400">{req.registerNumber}</td>
+                        <td className="px-6 py-5">
+                          <p className="text-sm text-gray-900 dark:text-[#F1F5F9] font-bold">{req.department}</p>
+                          <p className="text-[10px] text-gray-500 dark:text-slate-500 font-bold uppercase tracking-widest">{req.year}</p>
+                        </td>
+                        <td className="px-6 py-5 text-sm font-bold text-gray-900 dark:text-[#F1F5F9]">{req.cgpa || '0.0'}</td>
+                        <td className="px-6 py-5 text-sm text-gray-900 dark:text-[#F1F5F9]">{req.stream || 'N/A'}</td>
+                        <td className="px-6 py-5">
+                          <p className="text-sm text-gray-900 dark:text-[#F1F5F9]">{req.dateOfBirth ? new Date(req.dateOfBirth).toLocaleDateString() : 'N/A'}</p>
+                          <p className="text-[10px] text-gray-500 dark:text-slate-500 font-bold uppercase tracking-widest">{req.gender || 'N/A'}</p>
+                        </td>
+                        <td className="px-6 py-5 text-right">
+                          <div className="flex justify-end gap-3">
+                            <button
+                              onClick={() => handleReject(req._id)}
+                              className="px-4 py-2 bg-red-50 hover:bg-red-100 text-red-600 dark:bg-red-500/10 dark:text-red-400 dark:hover:bg-red-500/20 rounded-xl text-xs font-black uppercase tracking-widest transition-all"
+                            >
+                              Reject
+                            </button>
+                            <button
+                              onClick={() => handleApprove(req._id)}
+                              className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-xl text-xs font-black uppercase tracking-widest shadow-lg shadow-green-500/20 transition-all active:scale-95"
+                            >
+                              Approve Access
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                    ) : (
+                      <tr>
+                        <td colSpan="11" className="px-6 py-20 text-center">
+                          <div className="max-w-xs mx-auto">
+                          <CheckCircle2 className="w-12 h-12 text-green-500/20 mx-auto mb-4" />
+                          <h4 className="text-lg font-bold text-gray-900 dark:text-white">All caught up!</h4>
+                          <p className="text-sm text-gray-500 dark:text-slate-400 mt-2">No pending registration requests to review at the moment.</p>
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
-        </div>
+        )}
       </div>
 
       {/* Student Detail Modal */}
@@ -765,9 +942,16 @@ export const AddStudentModal = ({ onClose, onSuccess, onError }) => {
     e.preventDefault();
     setIsSubmitting(true);
     try {
+      const userStr = localStorage.getItem('user');
+      const user = userStr ? JSON.parse(userStr) : null;
+      const userId = user ? (user._id || user.id || user.email) : 'admin-bypass';
+
       const resp = await fetch(`${import.meta.env.VITE_API_URL}/api/users`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'x-user-id': userId
+        },
         body: JSON.stringify(formData)
       });
       if (resp.ok) onSuccess();
@@ -994,9 +1178,16 @@ export const EditStudentModal = ({ student, onClose, onSuccess, onError }) => {
     e.preventDefault();
     setIsSubmitting(true);
     try {
+      const userStr = localStorage.getItem('user');
+      const user = userStr ? JSON.parse(userStr) : null;
+      const userId = user ? (user._id || user.id || user.email) : 'admin-bypass';
+
       const resp = await fetch(`${import.meta.env.VITE_API_URL}/api/users/${student._id}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'x-user-id': userId
+        },
         body: JSON.stringify(formData)
       });
       if (resp.ok) onSuccess();

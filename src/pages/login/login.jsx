@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Briefcase, ArrowRight, GraduationCap } from 'lucide-react';
+import { Briefcase, ArrowRight, GraduationCap, X } from 'lucide-react';
 import { useGoogleLogin } from '@react-oauth/google';
 import studentImage from '../../assets/download (3).png';
 import logoImage from '../../assets/logo.png';
@@ -8,6 +8,19 @@ import logoImage from '../../assets/logo.png';
 const Login = () => {
     const navigate = useNavigate();
     const [loading, setLoading] = useState(false);
+    const [showRegistration, setShowRegistration] = useState(false);
+    const [pendingEmail, setPendingEmail] = useState('');
+    const [registrationForm, setRegistrationForm] = useState({
+        name: '',
+        registerNumber: '',
+        department: '',
+        year: '2024',
+        mobile: '',
+        cgpa: '',
+        stream: '',
+        dateOfBirth: '',
+        gender: ''
+    });
 
     const handleGoogleLogin = useGoogleLogin({
         onSuccess: async (tokenResponse) => {
@@ -32,12 +45,23 @@ const Login = () => {
 
                 if (dbRes.ok) {
                     const dbUser = await dbRes.json();
-                    console.log('[Login] DB user found:', dbUser.name);
+                    
+                    // Check user status
+                    if (dbUser.status === 'pending') {
+                        alert('Your registration request is pending admin approval.');
+                        setLoading(false);
+                        return;
+                    }
+                    if (dbUser.status === 'rejected') {
+                        alert('Your access request has been rejected. Please contact the administrator.');
+                        setLoading(false);
+                        return;
+                    }
 
-                    // Store DB record and proceed
+                    console.log('[Login] DB user found:', dbUser.name);
                     localStorage.setItem('user', JSON.stringify(dbUser));
                     
-                    // Record login event
+                    // Proceed with login...
                     try {
                         await fetch(`${import.meta.env.VITE_API_URL}/api/users/${dbUser._id}/login-event`, {
                             method: 'POST',
@@ -48,23 +72,27 @@ const Login = () => {
                                 status: 'success'
                             })
                         });
-                    } catch (e) {
-                        console.warn('[Login] Failed to record login event:', e);
-                    }
+                    } catch (e) { console.warn(e); }
 
-                    // Redirect
                     if (userInfo.email === import.meta.env.VITE_ADMIN_EMAIL) {
                         navigate('/admin/dashboard');
                     } else {
                         navigate('/');
                     }
                 } else {
-                    const error = await dbRes.json().catch(() => ({}));
-                    alert(`Access Denied: ${error.message || 'Your email is not registered in the system.'} (Status: ${dbRes.status})`);
+                    // User not found - check for @bitsathy.ac.in
+                    if (userInfo.email.toLowerCase().endsWith('@bitsathy.ac.in')) {
+                        setPendingEmail(userInfo.email);
+                        setRegistrationForm(prev => ({ ...prev, name: userInfo.name || '' }));
+                        setShowRegistration(true);
+                    } else {
+                        const error = await dbRes.json().catch(() => ({}));
+                        alert(`Access Denied: ${error.message || 'Only @bitsathy.ac.in emails are allowed.'} (Status: ${dbRes.status})`);
+                    }
                 }
             } catch (error) {
-                console.error('Login Error:', error);
-                alert('Login failed. Please try again.');
+                console.error('Login Error details:', error);
+                alert(`Login failed: ${error.message || 'Please try again.'}`);
             } finally {
                 setLoading(false);
             }
@@ -75,6 +103,30 @@ const Login = () => {
             setLoading(false);
         },
     });
+
+    const handleRegisterSubmit = async (e) => {
+        e.preventDefault();
+        setLoading(true);
+        try {
+            const resp = await fetch(`${import.meta.env.VITE_API_URL}/api/users/register-request`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ ...registrationForm, email: pendingEmail })
+            });
+            const data = await resp.json();
+            if (resp.ok) {
+                alert(data.message);
+                setShowRegistration(false);
+            } else {
+                alert(data.message || 'Registration failed');
+            }
+        } catch (err) {
+            console.error('Registration error:', err);
+            alert('A network error occurred');
+        } finally {
+            setLoading(false);
+        }
+    };
 
     return (
         <div className="min-h-screen items-center justify-center bg-gradient-to-br from-blue-400 via-blue-300 to-cyan-300 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 flex items-center justify-center p-4 transition-colors duration-500">
@@ -174,8 +226,161 @@ const Login = () => {
                     </div>
                 </div>
             </div>
-        </div>
 
+            {/* Registration Modal */}
+            {showRegistration && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300">
+                    <div className="w-full max-w-md max-h-[90vh] overflow-y-auto bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-gray-100 dark:border-slate-800 animate-in zoom-in-95 duration-300 hide-scrollbar">
+                        <div className="p-8">
+                            <div className="flex justify-between items-center mb-6">
+                                <div>
+                                    <h3 className="text-2xl font-bold text-gray-900 dark:text-white uppercase tracking-tight">Register Account</h3>
+                                    <p className="text-xs font-bold text-blue-500 uppercase tracking-[0.2em] mt-1">{pendingEmail}</p>
+                                </div>
+                                <button onClick={() => setShowRegistration(false)} className="p-2 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-xl transition-colors">
+                                    <X className="w-6 h-6 text-gray-400" />
+                                </button>
+                            </div>
+
+                            <form onSubmit={handleRegisterSubmit} className="space-y-4">
+                                <div>
+                                    <label className="block text-[10px] font-black text-gray-400 dark:text-slate-500 uppercase tracking-[0.2em] mb-1.5 px-1">Full Name</label>
+                                    <input
+                                        type="text"
+                                        required
+                                        className="w-full px-4 py-3 bg-gray-50 dark:bg-slate-800 border-2 border-transparent focus:border-blue-500/30 rounded-xl outline-none transition-all dark:text-white font-medium"
+                                        value={registrationForm.name}
+                                        onChange={(e) => setRegistrationForm({ ...registrationForm, name: e.target.value })}
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-[10px] font-black text-gray-400 dark:text-slate-500 uppercase tracking-[0.2em] mb-1.5 px-1">Register Number</label>
+                                    <input
+                                        type="text"
+                                        required
+                                        className="w-full px-4 py-3 bg-gray-50 dark:bg-slate-800 border-2 border-transparent focus:border-blue-500/30 rounded-xl outline-none transition-all dark:text-white font-medium"
+                                        value={registrationForm.registerNumber}
+                                        onChange={(e) => setRegistrationForm({ ...registrationForm, registerNumber: e.target.value })}
+                                    />
+                                </div>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-[10px] font-black text-gray-400 dark:text-slate-500 uppercase tracking-[0.2em] mb-1.5 px-1">Department</label>
+                                        <select
+                                            required
+                                            className="w-full px-4 py-3 bg-gray-50 dark:bg-slate-800 border-2 border-transparent focus:border-blue-500/30 rounded-xl outline-none transition-all dark:text-white font-medium cursor-pointer"
+                                            value={registrationForm.department}
+                                            onChange={(e) => setRegistrationForm({ ...registrationForm, department: e.target.value })}
+                                        >
+                                            <option value="">Select</option>
+                                            <option value="CSE">CSE</option>
+                                            <option value="IT">IT</option>
+                                            <option value="ECE">ECE</option>
+                                            <option value="EEE">EEE</option>
+                                            <option value="MECH">MECH</option>
+                                            <option value="CIVIL">CIVIL</option>
+                                            <option value="AIDS">AI & DS</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label className="block text-[10px] font-black text-gray-400 dark:text-slate-500 uppercase tracking-[0.2em] mb-1.5 px-1">Batch</label>
+                                        <input
+                                            type="text"
+                                            required
+                                            placeholder="2024"
+                                            className="w-full px-4 py-3 bg-gray-50 dark:bg-slate-800 border-2 border-transparent focus:border-blue-500/30 rounded-xl outline-none transition-all dark:text-white font-medium"
+                                            value={registrationForm.year}
+                                            onChange={(e) => setRegistrationForm({ ...registrationForm, year: e.target.value })}
+                                        />
+                                    </div>
+                                </div>
+
+                                {/* New Fields: CGPA, Stream */}
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-[10px] font-black text-gray-400 dark:text-slate-500 uppercase tracking-[0.2em] mb-1.5 px-1">CGPA</label>
+                                        <input
+                                            type="number"
+                                            step="0.01"
+                                            min="0"
+                                            max="10"
+                                            required
+                                            placeholder="8.5"
+                                            className="w-full px-4 py-3 bg-gray-50 dark:bg-slate-800 border-2 border-transparent focus:border-blue-500/30 rounded-xl outline-none transition-all dark:text-white font-medium"
+                                            value={registrationForm.cgpa}
+                                            onChange={(e) => setRegistrationForm({ ...registrationForm, cgpa: e.target.value })}
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-[10px] font-black text-gray-400 dark:text-slate-500 uppercase tracking-[0.2em] mb-1.5 px-1">Stream</label>
+                                        <input
+                                            type="text"
+                                            required
+                                            placeholder="B.E"
+                                            className="w-full px-4 py-3 bg-gray-50 dark:bg-slate-800 border-2 border-transparent focus:border-blue-500/30 rounded-xl outline-none transition-all dark:text-white font-medium"
+                                            value={registrationForm.stream}
+                                            onChange={(e) => setRegistrationForm({ ...registrationForm, stream: e.target.value })}
+                                        />
+                                    </div>
+                                </div>
+
+                                {/* New Fields: DOB, Gender */}
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-[10px] font-black text-gray-400 dark:text-slate-500 uppercase tracking-[0.2em] mb-1.5 px-1">Date of Birth</label>
+                                        <input
+                                            type="date"
+                                            required
+                                            className="w-full px-4 py-3 bg-gray-50 dark:bg-slate-800 border-2 border-transparent focus:border-blue-500/30 rounded-xl outline-none transition-all dark:text-white font-medium"
+                                            value={registrationForm.dateOfBirth}
+                                            onChange={(e) => setRegistrationForm({ ...registrationForm, dateOfBirth: e.target.value })}
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-[10px] font-black text-gray-400 dark:text-slate-500 uppercase tracking-[0.2em] mb-1.5 px-1">Gender</label>
+                                        <select
+                                            required
+                                            className="w-full px-4 py-3 bg-gray-50 dark:bg-slate-800 border-2 border-transparent focus:border-blue-500/30 rounded-xl outline-none transition-all dark:text-white font-medium cursor-pointer"
+                                            value={registrationForm.gender}
+                                            onChange={(e) => setRegistrationForm({ ...registrationForm, gender: e.target.value })}
+                                        >
+                                            <option value="">Select</option>
+                                            <option value="Male">Male</option>
+                                            <option value="Female">Female</option>
+                                            <option value="Other">Other</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label className="block text-[10px] font-black text-gray-400 dark:text-slate-500 uppercase tracking-[0.2em] mb-1.5 px-1">Mobile Number</label>
+                                    <input
+                                        type="tel"
+                                        required
+                                        className="w-full px-4 py-3 bg-gray-50 dark:bg-slate-800 border-2 border-transparent focus:border-blue-500/30 rounded-xl outline-none transition-all dark:text-white font-medium"
+                                        value={registrationForm.mobile}
+                                        onChange={(e) => setRegistrationForm({ ...registrationForm, mobile: e.target.value })}
+                                    />
+                                </div>
+
+                                <button
+                                    type="submit"
+                                    disabled={loading}
+                                    className="w-full py-4 mt-2 bg-blue-600 dark:bg-blue-700 hover:bg-blue-700 dark:hover:bg-blue-600 text-white font-black uppercase tracking-[0.2em] rounded-2xl shadow-xl shadow-blue-500/20 transition-all flex items-center justify-center gap-2 group disabled:opacity-50 active:scale-[0.98]"
+                                >
+                                    {loading ? 'Submitting...' : (
+                                        <>
+                                            Request Access
+                                            <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                                        </>
+                                    )}
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            )}
+        </div>
     );
 };
 
