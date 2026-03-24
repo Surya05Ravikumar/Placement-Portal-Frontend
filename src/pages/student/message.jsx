@@ -6,23 +6,23 @@ import {
   MessageSquare, Clock, Check, CheckCheck, FileText
 } from 'lucide-react';
 
-const getStudentId = () => {
-  try {
-    const userStr = localStorage.getItem('user');
-    if (userStr) {
-      const userObj = JSON.parse(userStr);
-      // Prioritize registerNumber as it's the identifier used for student chats
-      return userObj.registerNumber || userObj.id || userObj._id;
-    }
-  } catch (e) {
-    console.error("Error parsing user from localStorage:", e);
-  }
-  return null;
-};
-const STUDENT_ID = getStudentId();
-
 const Messages = () => {
-  const [selectedChat, setSelectedChat] = useState('placement-cell');
+    const getStudentId = () => {
+        try {
+            const userStr = localStorage.getItem('user');
+            if (userStr) {
+                const userObj = JSON.parse(userStr);
+                // Prioritize registerNumber as it's the identifier used for student chats
+                return userObj.registerNumber || userObj.id || userObj._id;
+            }
+        } catch (e) {
+            console.error("Error parsing user from localStorage:", e);
+        }
+        return null;
+    };
+    
+    const STUDENT_ID = getStudentId();
+    const [selectedChat, setSelectedChat] = useState('placement-cell');
   const [messageInput, setMessageInput] = useState('');
   const [messages, setMessages] = useState([]);
   const [chats, setChats] = useState([]);

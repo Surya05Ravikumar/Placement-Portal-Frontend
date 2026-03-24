@@ -14,15 +14,16 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
         const user = JSON.parse(userStr);
         const email = user.email || '';
 
-        // Determine user role
-        let userRole = 'student';
-        if (email === import.meta.env.VITE_ADMIN_EMAIL) {
-            userRole = 'admin';
-        } else if (email.endsWith('@bitsathy.ac.in')) {
-            userRole = 'student';
-        } else {
-            // Default fallback
-            userRole = 'student';
+        // Determine user role - prioritize role from DB object if present
+        let userRole = user.role;
+        
+        // Fallback or double-check for specific environments
+        if (!userRole) {
+            if (email === import.meta.env.VITE_ADMIN_EMAIL) {
+                userRole = 'admin';
+            } else {
+                userRole = 'student';
+            }
         }
 
         if (allowedRoles && !allowedRoles.includes(userRole)) {

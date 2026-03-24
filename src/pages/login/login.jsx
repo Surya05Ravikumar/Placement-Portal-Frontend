@@ -13,77 +13,65 @@ const Login = () => {
         onSuccess: async (tokenResponse) => {
             setLoading(true);
             try {
-                // Fetch user info with the access token
-                const response = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+                // Fetch user info from Google
+                const googleRes = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
                     headers: { Authorization: `Bearer ${tokenResponse.access_token}` },
                 });
-                const userInfo = await response.json();
-
-                // Use Google email to look up the clean DB user record
-                let dbUser = null;
-                try {
-                    // NOTE: must use ?email= query param, NOT /byEmail/:email path param
-                    // because Express truncates dots in path params (gmail.com → gmail)
-                    const dbRes = await fetch(
-                        `${import.meta.env.VITE_API_URL}/api/users/byEmail?email=${encodeURIComponent(userInfo.email)}`
-                    );
-                    if (dbRes.ok) {
-                        dbUser = await dbRes.json();
-                        console.log('[Login] DB user found:', dbUser?.name, '| regNo:', dbUser?.registerNumber);
-                    } else {
-                        console.warn('[Login] No DB user for email:', userInfo.email, '(status', dbRes.status + ')');
-                    }
-                } catch (e) {
-                    console.warn('[Login] DB lookup failed:', e);
+                
+                if (!googleRes.ok) {
+                    throw new Error('Failed to fetch user info from Google');
                 }
+                
+                const userInfo = await googleRes.json();
+                console.log('[Login] Google User Info:', userInfo);
 
-                // Store ONLY the clean DB record in localStorage (not raw Google OAuth fields)
-                // If DB user not found, store a minimal fallback object
-                const userToStore = dbUser
-                    ? dbUser   // clean MongoDB document with registerNumber, cgpa, activityPoints etc.
-                    : {
-                        name: userInfo.name,
-                        email: userInfo.email,
-                        picture: userInfo.picture,
-                        role: userInfo.email === import.meta.env.VITE_ADMIN_EMAIL ? 'admin' : 'student',
-                    };
+                // Verify user existence in DB
+                const dbRes = await fetch(
+                    `${import.meta.env.VITE_API_URL}/api/users/byEmail?email=${encodeURIComponent(userInfo.email)}`
+                );
 
-                localStorage.setItem('user', JSON.stringify(userToStore));
-                console.log('[Login] Stored in localStorage:', userToStore);
+                if (dbRes.ok) {
+                    const dbUser = await dbRes.json();
+                    console.log('[Login] DB user found:', dbUser.name);
 
-                // RECORD LOGIN EVENT
-                if (dbUser?._id) {
+                    // Store DB record and proceed
+                    localStorage.setItem('user', JSON.stringify(dbUser));
+                    
+                    // Record login event
                     try {
                         await fetch(`${import.meta.env.VITE_API_URL}/api/users/${dbUser._id}/login-event`, {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({
-                                deviceInfo: navigator.userAgent.includes('Windows') ? 'Chrome on Windows' : 'Mobile/Browser',
-                                locationInfo: 'Chennai, India', // Mock or use IP-based later
+                                deviceInfo: navigator.userAgent.includes('Windows') ? 'Chrome on Windows' : 'Browser',
+                                locationInfo: 'Unknown',
                                 status: 'success'
                             })
                         });
                     } catch (e) {
                         console.warn('[Login] Failed to record login event:', e);
                     }
-                }
 
-                const email = userInfo.email || '';
-                if (email === import.meta.env.VITE_ADMIN_EMAIL) {
-                    navigate('/admin/dashboard');
+                    // Redirect
+                    if (userInfo.email === import.meta.env.VITE_ADMIN_EMAIL) {
+                        navigate('/admin/dashboard');
+                    } else {
+                        navigate('/');
+                    }
                 } else {
-                    navigate('/');
+                    const error = await dbRes.json().catch(() => ({}));
+                    alert(`Access Denied: ${error.message || 'Your email is not registered in the system.'} (Status: ${dbRes.status})`);
                 }
             } catch (error) {
-                console.error('Failed to fetch user info:', error);
+                console.error('Login Error:', error);
                 alert('Login failed. Please try again.');
             } finally {
                 setLoading(false);
             }
         },
-        onError: () => {
-            console.error('Login Failed');
-            alert('Login failed. Please try again.');
+        onError: (error) => {
+            console.error('Google Login Error:', error);
+            alert('Google login failed. Please check your connection.');
             setLoading(false);
         },
     });
