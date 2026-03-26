@@ -250,19 +250,12 @@ const Messages = () => {
                 <div className="bg-white dark:bg-[#020617] rounded-3xl border border-gray-200 dark:border-slate-800 overflow-hidden h-full shadow-2xl shadow-blue-500/5 flex transition-colors">
             {/* Chat List Sidebar */}
             <div className="w-80 border-r border-gray-200 flex flex-col">
-                        {/* Search */}
-                        <div className="p-5 border-b border-gray-100 dark:border-slate-800/50">
-                            <div className="relative group">
-                                <Search className="w-4 h-4 text-gray-400 absolute left-4 top-1/2 transform -translate-y-1/2 group-focus-within:text-blue-500 transition-colors" />
-                                <input
-                                    type="text"
-                                    placeholder="Search conversations..."
-                                    className="w-full pl-11 pr-4 py-2.5 bg-gray-50 dark:bg-slate-900/50 border border-transparent dark:border-slate-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500/50 dark:text-white text-sm font-medium transition-all"
-                                />
-                            </div>
+                        {/* Header */}
+                        <div className="p-6 border-b border-gray-100 dark:border-slate-800/50">
+                            <h2 className="text-sm font-black text-gray-900 dark:text-white uppercase tracking-[0.2em]">Contacts</h2>
                         </div>
 
-                            <div className="flex-1 overflow-y-auto no-scrollbar py-2 px-3 space-y-1">
+                        <div className="flex-1 overflow-y-auto no-scrollbar py-2 px-3 space-y-1">
                                 {chats.map((chat) => (
                                     <div
                                         key={chat.id}

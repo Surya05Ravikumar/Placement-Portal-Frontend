@@ -100,7 +100,8 @@ export default function Header({
 
     const fetchUnreadMessages = async () => {
       try {
-        const messageId = role === 'Admin' ? 'placement-cell' : user.registerNumber;
+        const isUserAdmin = role?.toLowerCase() === 'admin';
+        const messageId = isUserAdmin ? 'placement-cell' : user.registerNumber;
         if (!messageId) return;
         const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/messages/unread-count/${messageId}`);
         setUnreadMessageCount(res.data.count);
@@ -116,7 +117,7 @@ export default function Header({
     
     // Join both internal ID room and Register Number room
     socket.emit('join_personal', userId);
-    if (role === 'Admin') {
+    if (role?.toLowerCase() === 'admin') {
       socket.emit('join_personal', 'placement-cell');
     } else if (user.registerNumber) {
       socket.emit('join_personal', user.registerNumber);
